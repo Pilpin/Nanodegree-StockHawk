@@ -1,19 +1,21 @@
 package com.sam_chordas.android.stockhawk.rest;
 
 import android.content.ContentProviderOperation;
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.sam_chordas.android.stockhawk.data.QuoteColumns;
 import com.sam_chordas.android.stockhawk.data.QuoteProvider;
 import java.util.ArrayList;
+import java.util.ListIterator;
+import java.util.Locale;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-/**
- * Created by sam_chordas on 10/8/15.
- */
 public class Utils {
 
     private static String LOG_TAG = Utils.class.getSimpleName();
@@ -22,18 +24,20 @@ public class Utils {
 
     public static ArrayList quoteJsonToContentVals(String JSON){
         ArrayList<ContentProviderOperation> batchOperations = new ArrayList<>();
-        JSONObject jsonObject = null;
-        JSONArray resultsArray = null;
+        JSONObject jsonObject;
+        JSONArray resultsArray;
+        ArrayList<String> badSymbols = new ArrayList<String>();
         try{
             jsonObject = new JSONObject(JSON);
-            if (jsonObject != null && jsonObject.length() != 0){
+            if (jsonObject.length() != 0){
                 jsonObject = jsonObject.getJSONObject("query");
                 int count = Integer.parseInt(jsonObject.getString("count"));
                 if (count == 1){
                     jsonObject = jsonObject.getJSONObject("results").getJSONObject("quote");
-                    ContentProviderOperation cpo = buildBatchOperation(jsonObject);
-                    if(cpo != null) {
+                    if(!jsonObject.getString("Bid").equals("null")){
                         batchOperations.add(buildBatchOperation(jsonObject));
+                    }else{
+                        badSymbols.add(jsonObject.getString("symbol"));
                     }
                 } else{
                     resultsArray = jsonObject.getJSONObject("results").getJSONArray("quote");
@@ -41,9 +45,10 @@ public class Utils {
                     if (resultsArray != null && resultsArray.length() != 0){
                         for (int i = 0; i < resultsArray.length(); i++){
                             jsonObject = resultsArray.getJSONObject(i);
-                            ContentProviderOperation cpo = buildBatchOperation(jsonObject);
-                            if(cpo != null) {
+                            if(!jsonObject.getString("Bid").equals("null")){
                                 batchOperations.add(buildBatchOperation(jsonObject));
+                            }else{
+                                badSymbols.add(jsonObject.getString("symbol"));
                             }
                         }
                     }
@@ -52,11 +57,19 @@ public class Utils {
         } catch (JSONException e){
             Log.e(LOG_TAG, "String to JSON failed: " + e);
         }
+        ListIterator<String> iterator = badSymbols.listIterator();
+        StringBuilder stringBuilder = new StringBuilder();
+        while(iterator.hasNext()){
+            if(iterator.previousIndex() != -1){
+                stringBuilder.append(", ");
+            }
+            stringBuilder.append(iterator.next());
+        }
         return batchOperations;
     }
 
     public static String truncateBidPrice(String bidPrice){
-        bidPrice = String.format("%.2f", Float.parseFloat(bidPrice));
+        bidPrice = String.format(Locale.getDefault(), "%.2f", Float.parseFloat(bidPrice));
         return bidPrice;
     }
 
@@ -69,7 +82,7 @@ public class Utils {
         }
         change = change.substring(1, change.length());
         double round = (double) Math.round(Double.parseDouble(change) * 100) / 100;
-        change = String.format("%.2f", round);
+        change = String.format(Locale.getDefault(), "%.2f", round);
         StringBuffer changeBuffer = new StringBuffer(change);
         changeBuffer.insert(0, weight);
         changeBuffer.append(ampersand);
@@ -81,13 +94,9 @@ public class Utils {
         ContentProviderOperation.Builder builder = ContentProviderOperation.newInsert(
                 QuoteProvider.Quotes.CONTENT_URI);
         try {
-            String bid = jsonObject.getString("Bid");
-            if(bid.equals("null")) {
-                return null;
-            }
             String change = jsonObject.getString("Change");
             builder.withValue(QuoteColumns.SYMBOL, jsonObject.getString("symbol"));
-            builder.withValue(QuoteColumns.BIDPRICE, truncateBidPrice(bid));
+            builder.withValue(QuoteColumns.BIDPRICE, truncateBidPrice(jsonObject.getString("Bid")));
             builder.withValue(QuoteColumns.PERCENT_CHANGE, truncateChange(jsonObject.getString("ChangeinPercent"), true));
             builder.withValue(QuoteColumns.CHANGE, truncateChange(change, false));
             builder.withValue(QuoteColumns.ISCURRENT, 1);
@@ -100,5 +109,11 @@ public class Utils {
             e.printStackTrace();
         }
         return builder.build();
+    }
+
+    public static boolean isConnected(Context c){
+        ConnectivityManager cm = (ConnectivityManager) c.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+        return activeNetwork != null && activeNetwork.isConnectedOrConnecting();
     }
 }
