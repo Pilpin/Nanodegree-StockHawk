@@ -5,7 +5,9 @@ import android.content.Context;
 import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.Loader;
+import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.app.ActionBar;
 import android.os.Bundle;
@@ -16,7 +18,9 @@ import android.text.InputType;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.sam_chordas.android.stockhawk.R;
@@ -33,7 +37,7 @@ import com.google.android.gms.gcm.Task;
 import com.melnykov.fab.FloatingActionButton;
 import com.sam_chordas.android.stockhawk.touch_helper.SimpleItemTouchHelperCallback;
 
-public class MyStocksActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>{
+public class MyStocksActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>, SharedPreferences.OnSharedPreferenceChangeListener{
 
     /**
      * Fragment managing the behaviors, interactions and presentation of the navigation drawer.
@@ -48,7 +52,6 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
     private static final int CURSOR_LOADER_ID = 0;
     private QuoteCursorAdapter mCursorAdapter;
     private Context mContext;
-    private Cursor mCursor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,8 +78,12 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
         recyclerView.addOnItemTouchListener(new RecyclerViewItemClickListener(this,
                 new RecyclerViewItemClickListener.OnItemClickListener() {
                     @Override public void onItemClick(View v, int position) {
-                        //TODO:
-                        // do something on item click
+                        Intent intent = new Intent(mContext, StockDetailsActivity.class);
+                        TextView symbol = (TextView) v.findViewById(R.id.stock_symbol);
+                        TextView bidPrice = (TextView) v.findViewById(R.id.bid_price);
+                        intent.putExtra(getString(R.string.intent_extra_symbol), symbol.getText());
+                        intent.putExtra(getString(R.string.intent_extra_bidPrice), bidPrice.getText());
+                        mContext.startActivity(intent);
                     }
                 }));
         recyclerView.setAdapter(mCursorAdapter);
@@ -88,7 +95,7 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
             @Override public void onClick(View v) {
                 if (Utils.isConnected(mContext)){
                     new MaterialDialog.Builder(mContext).title(R.string.symbol_search)
-                            .content(R.string.content_test)
+                            .content(R.string.stock_search)
                             .inputType(InputType.TYPE_CLASS_TEXT)
                             .input(R.string.input_hint, R.string.input_prefill, new MaterialDialog.InputCallback() {
                                 @Override public void onInput(MaterialDialog dialog, CharSequence input) {
@@ -99,7 +106,7 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
                                             new String[] { input.toString() }, null);
                                     if (c.getCount() != 0) {
                                         Toast toast =
-                                                Toast.makeText(MyStocksActivity.this, "This stock is already saved!",
+                                                Toast.makeText(MyStocksActivity.this, getString(R.string.stockalreadysaved_toast),
                                                         Toast.LENGTH_LONG);
                                         toast.setGravity(Gravity.CENTER, Gravity.CENTER, 0);
                                         toast.show();
@@ -152,7 +159,16 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
     @Override
     public void onResume() {
         super.onResume();
+        SharedPreferences spf = PreferenceManager.getDefaultSharedPreferences(this);
+        spf.registerOnSharedPreferenceChangeListener(this);
         getLoaderManager().restartLoader(CURSOR_LOADER_ID, null, this);
+    }
+
+    @Override
+    protected void onPause() {
+        SharedPreferences spf = PreferenceManager.getDefaultSharedPreferences(this);
+        spf.unregisterOnSharedPreferenceChangeListener(this);
+        super.onPause();
     }
 
     public void networkToast(){
@@ -180,11 +196,6 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
         if (id == R.id.action_change_units){
             // this is for changing stock changes from percent value to dollar value
             Utils.showPercent = !Utils.showPercent;
@@ -208,7 +219,6 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data){
         mCursorAdapter.swapCursor(data);
-        mCursor = data;
     }
 
     @Override
@@ -216,4 +226,10 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
         mCursorAdapter.swapCursor(null);
     }
 
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if(key.equals(getString(R.string.preferences_key_badSymbols))){
+            Toast.makeText(this, getString(R.string.badsymbol_toast, sharedPreferences.getString(key, "")), Toast.LENGTH_SHORT).show();
+        }
+    }
 }
