@@ -29,7 +29,7 @@ public class Utils {
         ArrayList<ContentProviderOperation> batchOperations = new ArrayList<>();
         JSONObject jsonObject;
         JSONArray resultsArray;
-        ArrayList<String> badSymbols = new ArrayList<String>();
+        ArrayList<String> badSymbols = new ArrayList<>();
         try{
             jsonObject = new JSONObject(JSON);
             if (jsonObject.length() != 0){
@@ -83,8 +83,10 @@ public class Utils {
     }
 
     public static String truncateChange(String change, boolean isPercentChange){
-        if(change.equals("null")){
-            change = "0.00%";
+        if(change.equals("null") && isPercentChange){
+            change = "+0.00%";
+        }else if(change.equals("null") && !isPercentChange){
+            change = "+0.00";
         }
         String weight = change.substring(0,1);
         String ampersand = "";

@@ -2,6 +2,7 @@ package com.sam_chordas.android.stockhawk.widget;
 
 import android.app.IntentService;
 import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
 import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.Context;
@@ -88,8 +89,9 @@ public class StockWidgetService extends RemoteViewsService {
                 rv.setTextViewText(R.id.change, cursor.getString(cursor.getColumnIndex(QuoteColumns.CHANGE)));
             }
 
-            final Intent fillInIntent = new Intent();
-            fillInIntent.putExtra("symbol", cursor.getString(cursor.getColumnIndex(QuoteColumns.SYMBOL)));
+            final Intent fillInIntent = new Intent(mContext, StockDetailsActivity.class);
+            fillInIntent.putExtra(getString(R.string.intent_extra_symbol), cursor.getString(cursor.getColumnIndex(QuoteColumns.SYMBOL)));
+            fillInIntent.putExtra(getString(R.string.intent_extra_bidPrice), cursor.getString(cursor.getColumnIndex(QuoteColumns.BIDPRICE)));
             rv.setOnClickFillInIntent(R.id.stock_item, fillInIntent);
 
             return rv;

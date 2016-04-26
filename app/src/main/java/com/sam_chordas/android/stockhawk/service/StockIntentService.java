@@ -6,9 +6,6 @@ import android.os.Bundle;
 import android.util.Log;
 import com.google.android.gms.gcm.TaskParams;
 
-/**
- * Created by sam_chordas on 10/1/15.
- */
 public class StockIntentService extends IntentService {
 
   public StockIntentService(){
@@ -20,7 +17,6 @@ public class StockIntentService extends IntentService {
   }
 
   @Override protected void onHandleIntent(Intent intent) {
-    Log.d(StockIntentService.class.getSimpleName(), "Stock Intent Service");
     StockTaskService stockTaskService = new StockTaskService(this);
     Bundle args = new Bundle();
     if (intent.getStringExtra("tag").equals("add")){

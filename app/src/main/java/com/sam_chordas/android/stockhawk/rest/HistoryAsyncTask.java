@@ -1,11 +1,8 @@
 package com.sam_chordas.android.stockhawk.rest;
 
-import android.content.Context;
 import android.os.AsyncTask;
-import android.util.Log;
 
-import com.db.chart.model.LineSet;
-import com.sam_chordas.android.stockhawk.R;
+import com.sam_chordas.android.stockhawk.data.ParcelableLineSet;
 import com.sam_chordas.android.stockhawk.ui.StockDetailsActivity;
 
 import java.io.IOException;
@@ -18,10 +15,7 @@ import yahoofinance.YahooFinance;
 import yahoofinance.histquotes.HistoricalQuote;
 import yahoofinance.histquotes.Interval;
 
-/**
- * Created by sylvainautran on 25/04/16.
- */
-public class HistoryAsyncTask extends AsyncTask<Void, Void, LineSet> {
+public class HistoryAsyncTask extends AsyncTask<Void, Void, ParcelableLineSet> {
     private static String LOG_TAG = HistoryAsyncTask.class.toString();
     private StockDetailsActivity stockDetailsActivity;
     private String symbol;
@@ -34,7 +28,7 @@ public class HistoryAsyncTask extends AsyncTask<Void, Void, LineSet> {
     }
 
     @Override
-    protected LineSet doInBackground(Void... params) {
+    protected ParcelableLineSet doInBackground(Void... params) {
         try {
             Calendar from = Calendar.getInstance();
             Calendar to = Calendar.getInstance();
@@ -42,7 +36,7 @@ public class HistoryAsyncTask extends AsyncTask<Void, Void, LineSet> {
 
             Stock stock = YahooFinance.get(symbol, from, to, Interval.DAILY);
 
-            LineSet stockHistory = new LineSet();
+            ParcelableLineSet stockHistory = new ParcelableLineSet();
             Iterator<HistoricalQuote> iterator = stock.getHistory().listIterator();
             HistoricalQuote tmp;
             while(iterator.hasNext()){
@@ -62,7 +56,7 @@ public class HistoryAsyncTask extends AsyncTask<Void, Void, LineSet> {
     }
 
     @Override
-    protected void onPostExecute(LineSet stockHistory) {
+    protected void onPostExecute(ParcelableLineSet stockHistory) {
         super.onPostExecute(stockHistory);
         if(stockHistory != null){
             stockDetailsActivity.onTaskCompleted(stockHistory, max, min);
